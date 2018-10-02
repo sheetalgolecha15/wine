@@ -1,0 +1,106 @@
+---
+title: "Question2"
+author: "Sheetal"
+date: "7/6/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library("xlsx")
+setwd("/Users/sheetalgolecha/Documents/DMG1/individual assignment")
+getwd()
+```
+
+## R Markdown
+
+Reading the file and creating the PCA
+```{r cars}
+input<-read.csv("winedata.csv", header=TRUE)
+dim(input)
+
+mydata <- input[1:178,2:14]
+head(mydata)
+
+pcaObj <- princomp(mydata, cor = TRUE, scores = TRUE, covmat = NULL)   ### scored= true mean new data set will be created covmat= covariance matrix
+
+summary(pcaObj)
+plot(pcaObj)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+loadings(pcaObj)   ##
+pcaObj$loadings
+```
+
+Constructing the biplot to look at the polarity of columns and check pc scores
+
+
+
+```{r}
+biplot(pcaObj)
+biplot(pcaObj$scores[,1:2],pcaObj$loading[,1:2]) ## if you didn't want rescaling of the axis graph between comp1 and comp2
+
+pc_scores <- pcaObj$scores   # on the object all the scores
+pc_scores
+
+scale(mydata)    ### take the standardize matrix and matrix multiple with locading to get new data.
+scale(mydata) %*% pcaObj$loadings ## this is same as pcaObj$scores
+
+```
+
+Scaling the data using two componenets of PCA and calculating the rmse of the data
+
+
+```{r}
+scaled_data <- scale(mydata)
+rmse <- matrix(nrow=13,ncol=1)
+for (i in 1:13) {
+  scaled_data_recovered <- pc_scores[,1:i] %*% t(pcaObj$loadings[,1:i]) ## if compressed using two components
+  scaled_data_recovered
+  rmse[i] <- sum((scaled_data_recovered - scaled_data)^2) ## errors
+}
+rmse
+```
+
+Visualizing how the data is spread among all the clusters.
+
+```{r}
+pcaObj$scores
+
+plot(pcaObj$scores[,1], pcaObj$scores[,2], col="blue", xlab="Component 1", ylab="Component 2")
+
+
+```
+
+Looking at the screeplot to define the cluster type and applying K mean algorithm to apply it on the cluster.
+
+```{r}
+normalized_data=scale(scaled_data_recovered)
+Cluster_Variability <- matrix(nrow=5, ncol=1)
+for (i in 1:5) Cluster_Variability[i] <- kmeans(normalized_data,centers=i, nstart=4)$tot.withinss
+plot(1:5, Cluster_Variability, type="b", xlab="Number of clusters", ylab="Within groups sum of squares") ## Elbow curve or Scree plot
+
+fit <- kmeans(normalized_data, centers=2, iter.max=10, nstart=4)
+NormDatasWithClusterMembership <- cbind(input, fit$cluster)
+write.xlsx(NormDatasWithClusterMembership,file="winedata_cluster.xlsx")
+```
+
+
+Applying the Kmean on the complete set.
+
+
+```{r}
+normalized_data_1=scale(mydata)
+Cluster_Variability <- matrix(nrow=5, ncol=1)
+for (i in 1:5) Cluster_Variability[i] <- kmeans(normalized_data_1,centers=i, nstart=4)$tot.withinss
+plot(1:5, Cluster_Variability, type="b", xlab="Number of clusters", ylab="Within groups sum of squares") ## Elbow curve or Scree plot
+
+fit <- kmeans(normalized_data_1, centers=2, iter.max=10, nstart=4)
+NormDatasWithClusterMembership_1 <- cbind(input, fit$cluster)
+write.xlsx(NormDatasWithClusterMembership_1,file="winedata_cluster_real_ds.xlsx")
+```
+
